@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Space Grotesk", sans-serif;
+
+  --color-brand-primary: #1A1A1A;
+  --color-brand-accent: #1A1A1A;
+  --color-brand-success: #15803d;
+  --color-brand-warning: #c2410c;
+  --color-brand-danger: #b91c1c;
+  
+  --shadow-receipt: 4px 4px 0px #1A1A1A;
+}
+
+body {
+  background-color: #F4F4F1;
+  font-family: var(--font-sans);
+  color: #1A1A1A;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom ledger animation and receipt layout */
+.receipt-ledger {
+  background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.04;
+}
+
+.bg-repeating-conic {
+  background: repeating-conic-gradient(
+    from 0deg,
+    #1A1A1A 0deg 90deg,
+    #FFFFFF 90deg 180deg
+  );
+  background-size: 20px 20px;
+}
+
+/* Print Stylesheet Overrides */
+@media print {
+  /* Failsafe reset for single page application roots & parent containers */
+  html, body, #root, #root > div {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    color: #000000 !important;
+  }
+  
+  /* Hide unnecessary elements completely during printing */
+  #calculator-form,
+  #ai-negotiator-panel,
+  #calculation-guide,
+  #compliance-nudge-card,
+  header,
+  footer,
+  .upper-notice-bar,
+  .no-print,
+  button,
+  svg,
+  .fixed,
+  .pointer-events-none {
+    display: none !important;
+  }
+  
+  /* Reset tailwind's grid, layout containers, and column layouts to standard flow */
+  main, 
+  .grid, 
+  .lg:col-span-12, 
+  .lg:col-span-7, 
+  .lg:col-span-5, 
+  .lg:sticky,
+  .space-y-6,
+  .space-y-8 {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    box-shadow: none !important;
+  }
+  
+  /* Format receipt container cleanly for physical paper or PDF print output */
+  #receipt-container {
+    border: 2px solid #1A1A1A !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background-color: #FFFFFF !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+}
+

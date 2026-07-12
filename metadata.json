@@ -1,0 +1,6 @@
+{
+  "name": "Creator Rate Calculator",
+  "description": "A precise, compliance-aware rate calculator for Indian content creators with a Section 194R tax compliance nudge and an AI negotiation assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
