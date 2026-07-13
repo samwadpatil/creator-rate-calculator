@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Info, ChevronDown, ChevronUp, DollarSign, Layers, Percent, ShieldCheck } from "lucide-react";
 
 export default function CalculationGuide() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div

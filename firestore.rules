@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Global helpers
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function isNumber(val) {
+      return val is int || val is float;
+    }
+    
+    function isValidAnalytics(data) {
+      return (
+        (!('totalVisits' in data) || (isNumber(data.totalVisits) && data.totalVisits >= 0)) &&
+        (!('totalCalculations' in data) || (isNumber(data.totalCalculations) && data.totalCalculations >= 0)) &&
+        (!('totalDealValueINR' in data) || (isNumber(data.totalDealValueINR) && data.totalDealValueINR >= 0))
+      );
+    }
+    
+    function isValidCalculation(data) {
+      return (
+        data.keys().hasAll(['followers', 'niche', 'dealValue', 'currency', 'timestamp']) &&
+        data.keys().size() == 5 &&
+        data.followers is int && data.followers >= 0 && data.followers <= 1000000000 &&
+        data.niche is string && data.niche.size() <= 100 &&
+        isNumber(data.dealValue) && data.dealValue >= 0 &&
+        data.currency is string && data.currency.size() <= 10 &&
+        data.timestamp == request.time
+      );
+    }
+    
+    function isValidNicheStats(data) {
+      return (
+        data.keys().hasAll(['count']) &&
+        data.keys().size() == 1 &&
+        data.count is int && data.count >= 0
+      );
+    }
+    
+    // Collection matches
+    match /analytics/{docId} {
+      allow get: if isValidId(docId);
+      allow create, update: if isValidId(docId) && isValidAnalytics(incoming());
+    }
+    
+    match /calculations/{calcId} {
+      allow get: if isValidId(calcId);
+      allow create: if isValidId(calcId) && isValidCalculation(incoming());
+    }
+    
+    match /niches/{nicheId} {
+      allow get: if isValidId(nicheId);
+      allow create, update: if isValidId(nicheId) && isValidNicheStats(incoming());
+    }
+  }
+}

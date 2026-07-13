@@ -17,67 +17,79 @@ const PORT = 3000;
 app.use(express.json());
 
 
-// Initialize GoogleGenAI SDK server-side
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+// Initialize GoogleGenAI SDK server-side lazily to handle missing API keys gracefully
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient() {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is missing. Please add/configure your Gemini API Key in the settings or secrets panel of AI Studio.");
     }
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
-});
+  return aiClient;
+}
 
 // API Route for generating negotiations pitches and tax guidance
 app.post("/api/negotiate", async (req, res) => {
-  const { inputs, results } = req.body;
+  try {
+    const { inputs, results } = req.body;
 
-  if (!inputs || !results) {
-    return res.status(400).json({ error: "Missing required inputs or results for calculation." });
-  }
+    if (!inputs || !results) {
+      return res.status(400).json({ error: "Missing required inputs or results for calculation." });
+    }
 
-  const formatLabels: Record<string, string> = {
-    ig_reel: "Instagram Reel",
-    ig_story: "Instagram Story",
-    ig_carousel: "Instagram Carousel/Post",
-    yt_dedicated: "YouTube Dedicated Video",
-    yt_integrated: "YouTube Integrated Video",
-    yt_shorts: "YouTube Shorts"
-  };
+    const formatLabels: Record<string, string> = {
+      ig_reel: "Instagram Reel",
+      ig_story: "Instagram Story",
+      ig_carousel: "Instagram Carousel/Post",
+      yt_dedicated: "YouTube Dedicated Video",
+      yt_integrated: "YouTube Integrated Video",
+      yt_shorts: "YouTube Shorts"
+    };
 
-  const nicheLabels: Record<string, string> = {
-    finance: "Finance / Business",
-    tech_business: "Tech & Professional Business",
-    health_wellness: "Health & Wellness",
-    fashion_beauty: "Fashion & Beauty",
-    travel_food: "Travel & Culinary Arts",
-    gaming: "Gaming & Esports",
-    entertainment: "Comedy & Entertainment",
-    education: "EdTech & Education"
-  };
+    const nicheLabels: Record<string, string> = {
+      finance: "Finance / Business",
+      tech_business: "Tech & Professional Business",
+      health_wellness: "Health & Wellness",
+      fashion_beauty: "Fashion & Beauty",
+      travel_food: "Travel & Culinary Arts",
+      gaming: "Gaming & Esports",
+      entertainment: "Comedy & Entertainment",
+      education: "EdTech & Education"
+    };
 
-  const cityLabels: Record<string, string> = {
-    tier_1: "Tier 1 (Metro - Mumbai, Delhi NCR, Bangalore)",
-    tier_2: "Tier 2 (Pune, Hyderabad, Chennai, Kolkata)",
-    tier_3: "Tier 3 (Other regions)"
-  };
+    const cityLabels: Record<string, string> = {
+      tier_1: "Tier 1 (Metro - Mumbai, Delhi NCR, Bangalore)",
+      tier_2: "Tier 2 (Pune, Hyderabad, Chennai, Kolkata)",
+      tier_3: "Tier 3 (Other regions)"
+    };
 
-  const nicheLabel = nicheLabels[inputs.niche] || inputs.niche;
-  const cityLabel = cityLabels[inputs.cityTier] || inputs.cityTier;
+    const nicheLabel = nicheLabels[inputs.niche] || inputs.niche;
+    const cityLabel = cityLabels[inputs.cityTier] || inputs.cityTier;
 
-  const deliverablesText = inputs.deliverables && inputs.deliverables.length > 0
-    ? inputs.deliverables.map((item: any) => `${item.count}x ${formatLabels[item.format] || item.format}`).join(" + ")
-    : `${inputs.deliverablesCount}x ${formatLabels[inputs.format] || inputs.format}`;
+    const deliverablesText = inputs.deliverables && inputs.deliverables.length > 0
+      ? inputs.deliverables.map((item: any) => `${item.count}x ${formatLabels[item.format] || item.format}`).join(" + ")
+      : `${inputs.deliverablesCount}x ${formatLabels[inputs.format] || inputs.format}`;
 
-  // Let's craft an extremely professional and comprehensive prompt for Gemini
-  const prompt = `
+    // Let's craft an extremely professional and comprehensive prompt for Gemini
+    const prompt = `
 You are an expert talent manager, brand deal negotiator, and chartered accountant specializing in the Creator Economy in India.
 Review the following brand deal details for a creator:
 
 CREATOR DATA:
-- Followers: ${inputs.followers.toLocaleString()}
+- Followers: ${inputs.followers?.toLocaleString() || 0}
 - Accounts Reached (last 30 days): ${inputs.accountsReached?.toLocaleString() || "N/A"}
 - Accounts Engaged (last 30 days): ${inputs.accountsEngaged?.toLocaleString() || "N/A"}
-- Engagement Rate: ${inputs.engagementRate}% (Average for platform is 2.5%)
+- Engagement Rate: ${inputs.engagementRate || 0}% (Average for platform is 2.5%)
 - Content Niche: ${nicheLabel}
 - Creator Location: ${cityLabel}
 - Deliverables Package: ${deliverablesText}
@@ -114,9 +126,9 @@ Respond ONLY with a JSON object following this TS interface:
 Do not include any markdown fences or wrapping other than a clean JSON block. Ensure the response can be directly parsed via JSON.parse.
 `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+    const client = getAiClient();
+    const response = await client.models.generateContent({
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -127,10 +139,10 @@ Do not include any markdown fences or wrapping other than a clean JSON block. En
     const data = JSON.parse(text.trim());
     res.json(data);
   } catch (error: any) {
-    console.error("Gemini API error during negotiation strategy generation:", error);
+    console.error("Error during negotiation strategy generation:", error);
     res.status(500).json({
       error: "Failed to generate negotiation strategy. Please try again.",
-      details: error.message
+      details: error.message || String(error)
     });
   }
 });

@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "AnalyticsOverview": {
+      "title": "AnalyticsOverview",
+      "description": "Aggregated platform-wide usage statistics",
+      "type": "object",
+      "properties": {
+        "totalVisits": {
+          "type": "integer",
+          "description": "Total website visits tracked"
+        },
+        "totalCalculations": {
+          "type": "integer",
+          "description": "Total number of rate calculations completed"
+        },
+        "totalDealValueINR": {
+          "type": "integer",
+          "description": "Total financial deal value calculated in INR"
+        }
+      }
+    },
+    "Calculation": {
+      "title": "Calculation",
+      "description": "An individual creator rate calculation log",
+      "type": "object",
+      "properties": {
+        "followers": {
+          "type": "integer",
+          "description": "Number of followers input by the creator"
+        },
+        "niche": {
+          "type": "string",
+          "description": "Content niche of the creator"
+        },
+        "dealValue": {
+          "type": "number",
+          "description": "Calculated total economic deal value"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Selected currency for the rate calculation"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the logged calculation"
+        }
+      },
+      "required": [
+        "followers",
+        "niche",
+        "dealValue",
+        "currency",
+        "timestamp"
+      ]
+    },
+    "NicheStats": {
+      "title": "NicheStats",
+      "description": "Calculations count aggregated by niche",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Total calculations performed for this specific content niche"
+        }
+      },
+      "required": [
+        "count"
+      ]
+    }
+  },
+  "firestore": {
+    "analytics/{docId}": {
+      "schema": "AnalyticsOverview",
+      "description": "Global performance/usage stats document"
+    },
+    "calculations/{calcId}": {
+      "schema": "Calculation",
+      "description": "Collection of individual logged rate calculations"
+    },
+    "niches/{nicheId}": {
+      "schema": "NicheStats",
+      "description": "Aggregated stats per creator content niche"
+    }
+  }
+}

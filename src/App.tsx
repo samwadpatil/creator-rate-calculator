@@ -12,16 +12,19 @@ import {
   Layers,
   Scale,
   RefreshCw,
-  Coins
+  Coins,
+  LogOut,
+  UserCheck
 } from "lucide-react";
 import { CreatorInputs, NicheType, CityTier, FormatType } from "./types";
 import { calculateCreatorRate } from "./utils/calculator";
 import CalculatorForm from "./components/CalculatorForm";
 import ReceiptPanel from "./components/ReceiptPanel";
-import AiNegotiator from "./components/AiNegotiator";
+import PremiumAuthGate from "./components/PremiumAuthGate";
 import CalculationGuide from "./components/CalculationGuide";
 import HelpWalkthroughModal from "./components/HelpWalkthroughModal";
-import { trackVisitInFirestore, trackCalculationInFirestore } from "./lib/firebase";
+import { trackVisitInFirestore, trackCalculationInFirestore, auth } from "./lib/firebase";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 
 const DEFAULT_INPUTS: CreatorInputs = {
   followers: 12000,
@@ -137,18 +140,42 @@ const PRESETS: Preset[] = [
 ];
 
 export default function App() {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [inputs, setInputs] = useState<CreatorInputs>(DEFAULT_INPUTS);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   const results = calculateCreatorRate(inputs);
 
+  // Synchronize authentication state
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setCheckingAuth(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Sync creator name once authenticated
+  React.useEffect(() => {
+    if (user && !inputs.creatorName) {
+      setInputs((prev) => ({
+        ...prev,
+        creatorName: user.displayName || user.email?.split("@")[0] || ""
+      }));
+    }
+  }, [user]);
+
   // Track page visit on mount to real-time Firestore
   React.useEffect(() => {
-    trackVisitInFirestore();
-  }, []);
+    if (user) {
+      trackVisitInFirestore();
+    }
+  }, [user]);
 
   // Track calculation with debounce (2 seconds) to avoid writing to Firestore on every slider step
   React.useEffect(() => {
+    if (!user) return;
     const timer = setTimeout(() => {
       trackCalculationInFirestore(
         inputs.followers,
@@ -159,7 +186,7 @@ export default function App() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [inputs.followers, inputs.niche, results.totalDealValue, inputs.currency]);
+  }, [user, inputs.followers, inputs.niche, results.totalDealValue, inputs.currency]);
 
   // Load shared deal state from URL hash if present
   React.useEffect(() => {
@@ -191,16 +218,39 @@ export default function App() {
     setInputs(DEFAULT_INPUTS);
   };
 
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-[#0F0F11] flex flex-col items-center justify-center font-mono text-xs text-zinc-500">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="animate-spin h-5 w-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="tracking-widest uppercase font-bold text-zinc-400">CONNECTING TO AGENCY GATEWAY...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <PremiumAuthGate onAuthSuccess={(authenticatedUser) => setUser(authenticatedUser)} />;
+  }
+
   return (
-    <div className="min-h-screen bg-[#F4F4F1] text-[#1A1A1A] pb-16 flex flex-col font-sans select-none antialiased">
+    <div className="min-h-screen bg-[#F4F4F1] text-[#1A1A1A] pb-16 flex flex-col font-sans antialiased">
       
       {/* Header Section */}
       <header className="no-print border-b-2 border-[#1A1A1A] p-6 flex flex-col md:flex-row justify-between items-start md:items-end bg-white gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-700 text-[9px] font-black tracking-widest uppercase font-mono">
+              Vanguard Influence Partner Platform
+            </span>
+          </div>
           <h1 className="text-3xl font-black tracking-tighter uppercase font-display">Creator Rate Calculator</h1>
           <p className="text-xs font-mono opacity-60 uppercase mt-1">Calculate professional campaign rates, deliverables, and tax-compliant brand invoices</p>
         </div>
-        <div className="flex items-center gap-3 text-right font-mono text-xs w-full md:w-auto justify-between md:justify-end">
+        <div className="flex flex-wrap items-center gap-3 text-right font-mono text-xs w-full md:w-auto justify-between md:justify-end">
           <button
             onClick={() => setShowHelpModal(true)}
             className="px-3 py-1.5 text-[11px] font-bold uppercase border-2 border-[#1A1A1A] bg-[#1A1A1A] text-white hover:bg-slate-800 active:translate-y-0.5 transition flex items-center gap-1.5 rounded-none cursor-pointer"
@@ -213,11 +263,31 @@ export default function App() {
             className="px-3 py-1.5 text-[11px] font-bold uppercase border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] hover:bg-[#FDFDFB] active:translate-y-0.5 transition flex items-center gap-1.5 rounded-none cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Reset Calculator
+            Reset
           </button>
+          
           <div className="hidden sm:block text-right">
             <div className="text-[10px] font-bold uppercase opacity-40">Tax Year</div>
-            <div className="font-bold text-xs">2026 - 2027 (India)</div>
+            <div className="font-bold text-xs">2026-27 (IN)</div>
+          </div>
+
+          {/* Premium Agent User Badge */}
+          <div className="flex items-center gap-2.5 border-l-2 border-dashed border-zinc-300 pl-2.5 text-left">
+            <div className="hidden lg:block text-left">
+              <div className="text-[9px] font-bold uppercase text-amber-700 flex items-center gap-0.5 tracking-wider">
+                <UserCheck className="w-2.5 h-2.5" /> VERIFIED CREATOR
+              </div>
+              <div className="font-extrabold text-xs max-w-[130px] truncate">
+                {user.displayName || user.email?.split("@")[0]}
+              </div>
+            </div>
+            <button
+              onClick={() => signOut(auth)}
+              title="Secure Logout"
+              className="p-1.5 border-2 border-red-800 text-red-800 hover:bg-red-50 active:translate-y-0.5 transition rounded-none cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </header>
@@ -228,10 +298,9 @@ export default function App() {
         {/* Split Grid Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
           
-          {/* Left Column: Form Inputs & AI negotiator (Take 7 cols) */}
+          {/* Left Column: Form Inputs & Calculation Guide (Take 7 cols) */}
           <div className="lg:col-span-7 space-y-8">
             <CalculatorForm inputs={inputs} onChange={setInputs} />
-            <AiNegotiator inputs={inputs} results={results} />
             <CalculationGuide />
           </div>
 

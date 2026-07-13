@@ -135,9 +135,6 @@ export default function HelpWalkthroughModal({ isOpen, onClose, currency }: Help
             <p className="text-xs text-slate-600 leading-relaxed">
               Click <strong>Print / Save PDF</strong> on the receipt panel. It hides all calculator inputs and formats a beautiful, professional, single-page client invoice.
             </p>
-            <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 font-medium">
-              💡 <strong>Iframe Warning:</strong> If the print dialog does not open in the AI Studio preview, click the <strong>"Open in New Tab"</strong> link in the top-right corner of the window. Print works perfectly in a normal browser tab!
-            </div>
           </div>
         </div>
       )
